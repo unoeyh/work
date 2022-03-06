@@ -83,9 +83,35 @@ Model_info_deltaFriendly <- lm(df_seeninfo$deltaFriendly ~ df_seeninfo$Injunctiv
 summary(Model_info_deltaUnfriendly)
 summary(Model_info_deltaFriendly)
 
-## plotting the changes in each type of spendings
+
+
+### Visualization
+
+library(stargazer)
+
+## the table of baseline spending determinants
+
+stargazer(Model_PreUnfriendly,Model_PreFriendly, title="Baseline Spending", align=TRUE, 
+          dep.var.labels=c("Climate Unriendly Spending","Climate Friendly Spending"),
+          covariate.labels=c("Number of family members","Number of cars", "Sharing Bike","Climate change Perception"))
+
+## the table of post spending determinants
+
+stargazer(Model_info_PostUnfriendly, Model_info_PostFriendly, title="Post-intervention Spending", align=TRUE, 
+          dep.var.labels=c("Climate Unriendly Spending","Climate Friendly Spending"),
+          covariate.labels=c("Injunctive Norms", "Descriptive Norms", "Number of family members","Number of cars", "Sharing Bike","Climate change Perception"))
+
+
+## the table of changes in spending
+
+stargazer(Model_info_deltaUnfriendly, Model_info_deltaFriendly, title="Changes in spending", align=TRUE, 
+          dep.var.labels=c("Climate Unriendly Spending","Climate Friendly Spending"),
+          covariate.labels=c("Injunctive Norms", "Descriptive Norms"), omit = "Constant")
 
 df_seeninfo$TreatmentFactor <- factor(df_seeninfo$Treatment)
 
-ggplot(df_seeninfo, aes(x=TreatmentFactor, y=deltaFriendly)) + geom_boxplot()
-ggplot(df_seeninfo, aes(x=TreatmentFactor, y=deltaUnfriendly)) + geom_boxplot()
+
+## boxplot for changes in spending
+
+ggplot(df_seeninfo, aes(x=TreatmentFactor, y=deltaFriendly)) + geom_boxplot() + labs(y = "Changes in Climate Friendly Spending", x = "1: Control Group, 2: Injunctive Norm Group, 3: Prescriptive Norm Group")
+ggplot(df_seeninfo, aes(x=TreatmentFactor, y=deltaUnfriendly)) + geom_boxplot() + labs(y = "Changes in Climate Unriendly Spending", x = "1: Control Group, 2: Injunctive Norm Group, 3: Prescriptive Norm Group")
