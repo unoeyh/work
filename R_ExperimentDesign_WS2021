@@ -1,0 +1,91 @@
+# Import
+library(readxl)
+normdf <- read_excel("Documents/exe_design_termpaper/normdf.xlsx")
+View(normdf)
+library(tidyverse)
+library(plyr)
+library(ggplot2)
+
+## Drop the column 'Complex' which is not necessary in this analysis
+normdf$Complex <- NULL
+
+## defining categorical variables
+## treatment 2 means an injunctive norms provision
+## treatment 3 means a descriptive norms provision
+normdf$InjunctiveNorms <- ifelse(normdf$Treatment  == 2, 1, 0)
+normdf$DescriptiveNorms <- ifelse(normdf$Treatment  == 3, 1, 0)
+
+
+### Baseline spending determinants analysis
+
+## Run a regression of two spendings on control variables
+Model_PreUnfriendly <- lm(BaselineSpendingUnfriendly ~ NumberFamily + NumberCars + BaselineBike + BaselineClimate, data = normdf)
+Model_PreFriendly <- lm(BaselineSpendingFriendly ~ NumberFamily + NumberCars + BaselineBike + BaselineClimate, data = normdf)
+
+summary(Model_PreUnfriendly)
+summary(Model_PreFriendly)
+
+
+## Post intervention spending determinants analysis
+
+## linear regression of post-spendings on variables including the interventions
+Model_PostUnfriendly <- lm(PostSpendingUnfriendly ~ InjunctiveNorms + DescriptiveNorms + NumberFamily + PostCars + PostBike + PostClimate, data = normdf)
+Model_PostFriendly <- lm(PostSpendingFriendly ~ InjunctiveNorms + DescriptiveNorms + NumberFamily + PostCars + PostBike + PostClimate, data = normdf)
+
+summary(Model_PostUnfriendly)
+summary(Model_PostFriendly)
+
+
+## Changes in the spendings and the interventions
+
+## add columns containing values of the changes in spendings
+
+normdf$deltaUnfriendly <- normdf$PostSpendingUnfriendly - normdf$BaselineSpendingUnfriendly
+normdf$deltaFriendly <- normdf$PostSpendingFriendly - normdf$BaselineSpendingFriendly
+
+## Regression of the changes on the intervention only
+
+Model_deltaUnfriendly <- lm(deltaUnfriendly ~ InjunctiveNorms + DescriptiveNorms, data = normdf)
+Model_deltaFriendly <- lm(deltaFriendly ~ InjunctiveNorms + DescriptiveNorms, data = normdf)
+
+summary(Model_deltaUnfriendly)
+summary(Model_deltaFriendly)
+
+
+
+### Restrict the samples who answered that they have seen the information
+
+df_seeninfo <- normdf
+
+## drop the observations 
+## who answered that they could not see the information 
+## among the treatment groups
+
+df_seeninfo <- drop_na(df_seeninfo)
+
+df_seeninfo <- df_seeninfo[!(df_seeninfo$Treatment == 2 & df_seeninfo$SeenInfo == 0), ]
+df_seeninfo <- df_seeninfo[!(df_seeninfo$Treatment == 3 & df_seeninfo$SeenInfo == 0), ]
+df_seeninfo <- df_seeninfo[!(df_seeninfo$Treatment == 1 & df_seeninfo$DescriptiveNorms == 0 & df_seeninfo$SeenInfo == 1), ]
+
+
+## linear regression of post-spendings on variables including the interventions
+Model_info_PostUnfriendly <- lm(PostSpendingUnfriendly ~ InjunctiveNorms + DescriptiveNorms + NumberFamily + PostCars + PostBike + PostClimate, data = df_seeninfo)
+Model_info_PostFriendly <- lm(PostSpendingFriendly ~ InjunctiveNorms + DescriptiveNorms + NumberFamily + PostCars + PostBike + PostClimate, data = df_seeninfo)
+
+summary(Model_info_PostUnfriendly)
+summary(Model_info_PostFriendly)
+
+
+## Spending changes and the intervention
+Model_info_deltaUnfriendly <- lm(df_seeninfo$deltaUnfriendly ~ df_seeninfo$InjunctiveNorms + df_seeninfo$DescriptiveNorms)
+Model_info_deltaFriendly <- lm(df_seeninfo$deltaFriendly ~ df_seeninfo$InjunctiveNorms + df_seeninfo$DescriptiveNorms)
+
+summary(Model_info_deltaUnfriendly)
+summary(Model_info_deltaFriendly)
+
+## plotting the changes in each type of spendings
+
+df_seeninfo$TreatmentFactor <- factor(df_seeninfo$Treatment)
+
+ggplot(df_seeninfo, aes(x=TreatmentFactor, y=deltaFriendly)) + geom_boxplot()
+ggplot(df_seeninfo, aes(x=TreatmentFactor, y=deltaUnfriendly)) + geom_boxplot()
