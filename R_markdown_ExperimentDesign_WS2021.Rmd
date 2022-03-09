@@ -1,0 +1,124 @@
+---
+title: "The data analysis part; the Experimental Methods"
+output: html_notebook
+---
+
+
+This is an R markdown for the data analysis part of the final term paper for the module 'Experimental Methods'.
+
+(Chapter 4 of the term paper)
+
+**Result**
+
+Based on the experiment design, a mock data has been provided.
+
+In order to take a deeper look into the data,
+We import libraries and the file.
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(plyr)
+library(ggplot2)
+library(stargazer)
+
+normdf <- read_excel("normdf.xlsx")
+
+dim(normdf)
+
+head(normdf)
+```
+
+
+We need to delete the column 'Complex' which is not necessary in this analysis.
+On top of that, for the modeling we make two more columns of dummy variable for the treatment groups.
+
+```{r}
+## Drop the column 'Complex' which is not necessary in this analysis
+normdf$Complex <- NULL
+
+## defining categorical variables
+## treatment 2 means an injunctive norms provision
+## treatment 3 means a descriptive norms provision
+normdf$InjunctiveNorms <- ifelse(normdf$Treatment  == 2, 1, 0)
+normdf$DescriptiveNorms <- ifelse(normdf$Treatment  == 3, 1, 0)
+dim(normdf)
+```
+
+
+**Determinants of transport usage**
+Firstly, we conduct OLS regression on baseline spending data.
+
+```{r}
+## Run a regression of two spendings on control variables
+Model_PreUnfriendly <- lm(BaselineSpendingUnfriendly ~ NumberFamily + NumberCars + BaselineBike + BaselineClimate, data = normdf)
+Model_PreFriendly <- lm(BaselineSpendingFriendly ~ NumberFamily + NumberCars + BaselineBike + BaselineClimate, data = normdf)
+
+summary(Model_PreUnfriendly)
+summary(Model_PreFriendly)
+```
+
+The baseline spending models indicate that the households that have a more skeptical point of view towards climate change (p < 0.05) and own more automobiles (p < 0.01) tend to choose climate unfriendly transportation. The households who answered that they see the climate issue as less serious (who opt for 1: not serious at all and 2, out of range 4: very serious) owned more cars (mean: 1.49) than the other group (mean: 1.19) on average. We find that the number of cars owned and the sharing bike membership have a relation with the climate-friendly transport usage, though it was not significant.
+
+
+
+**Determinants of the post-intervention transport usage**
+
+We implement the same process on the post-experiment data. However for the post-intervention analysis, we only take the households that were exposed to the information into the treatment group observations. In addition, we excluded participants from the control group who answered that they have seen the information. This adjustment left us 99 observations out of 120.  
+
+```{r}
+
+## Adding the changes in spending for the next analysis
+normdf$deltaUnfriendly <- normdf$PostSpendingUnfriendly - normdf$BaselineSpendingUnfriendly
+normdf$deltaFriendly <- normdf$PostSpendingFriendly - normdf$BaselineSpendingFriendly
+
+df_seeninfo <- normdf
+
+## Remove observations who did not participate the post-survey
+df_seeninfo <- drop_na(df_seeninfo)
+
+## drop the observations 
+## who answered that they could not see the information 
+## among the treatment groups
+
+df_seeninfo <- df_seeninfo[!(df_seeninfo$Treatment == 2 & df_seeninfo$SeenInfo == 0), ]
+df_seeninfo <- df_seeninfo[!(df_seeninfo$Treatment == 3 & df_seeninfo$SeenInfo == 0), ]
+df_seeninfo <- df_seeninfo[!(df_seeninfo$Treatment == 1 & df_seeninfo$SeenInfo == 1), ]
+
+
+dim(df_seeninfo)
+head(df_seeninfo)
+```
+
+```{r}
+## linear regression of post-spendings on variables including the interventions
+Model_info_PostUnfriendly <- lm(PostSpendingUnfriendly ~ InjunctiveNorms + DescriptiveNorms + NumberFamily + PostCars + PostBike + PostClimate, data = df_seeninfo)
+Model_info_PostFriendly <- lm(PostSpendingFriendly ~ InjunctiveNorms + DescriptiveNorms + NumberFamily + PostCars + PostBike + PostClimate, data = df_seeninfo)
+
+summary(Model_info_PostUnfriendly)
+summary(Model_info_PostFriendly)
+```
+ We find a significant impact of the intervention on the post-treatment data. As we can see in the result of the post-spending models, both of the treatment groups reduced their spending on less-environmental travel options. The effect was slightly larger on the cohort who received descriptive norm information(- 3,018 KRW) than injunctive norm information (- 2,545 KRW).  Climate change perception turned out to be a still significant determinant (p < 0.05).  However, norm provision was not a prominent factor to change the perception itself. Only 1 household answered that she perceives the issue more seriously than before (from 1 to 2).
+ 
+ 
+ Among the determinants, bike-sharing membership has the strongest correlation (4,365 KRW) with environmental travel spending. In other words, households that have more options on climate-friendly transport than one have less spend more on it.
+
+
+**Changes in spending**
+```{r}
+## Spending changes and the intervention
+Model_info_deltaUnfriendly <- lm(deltaUnfriendly ~ InjunctiveNorms + DescriptiveNorms, data = df_seeninfo)
+Model_info_deltaFriendly <- lm(deltaFriendly ~ InjunctiveNorms + DescriptiveNorms, data = df_seeninfo)
+
+summary(Model_info_deltaUnfriendly)
+summary(Model_info_deltaFriendly)
+```
+
+ For both treatment groups, the parameters were positive but not significant in the climate-friendly spending change model. On the other hand, we can find the effect of the intervention on less environmentally friendly spending. Both parameters indicating the effect of the treatment were significant (p < 0.05 and p < 0.01 respectively).  A diminishing in the descriptive norm group is even steeper (-4,110 KRW) than the other treatment group (-1,955 KRW) in contrast to several previous studies. 
+ 
+```{r}
+## boxplot for changes in spending
+df_seeninfo$TreatmentFactor <- factor(df_seeninfo$Treatment)
+ggplot(df_seeninfo, aes(x=TreatmentFactor, y=deltaFriendly)) + geom_boxplot() + labs(y = "Changes in Climate Friendly Spending", x = "1: Control Group, 2: Injunctive Norm Group, 3: Prescriptive Norm Group")
+ggplot(df_seeninfo, aes(x=TreatmentFactor, y=deltaUnfriendly)) + geom_boxplot() + labs(y = "Changes in Climate Unriendly Spending", x = "1: Control Group, 2: Injunctive Norm Group, 3: Prescriptive Norm Group")
+```
